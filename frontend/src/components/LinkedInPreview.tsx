@@ -24,9 +24,9 @@ export const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({
   caption,
   previewUrl,
   fileType,
-  authorName = 'Alex Vance',
-  authorHeadline = 'Founder & LinkedIn Creator • Building in Public',
-  authorAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+  authorName = 'Your Profile',
+  authorHeadline = 'LinkedIn Content Creator',
+  authorAvatar = '',
 }) => {
   // Format caption with highlighted hashtags
   const formatCaption = (text: string) => {
@@ -67,11 +67,17 @@ export const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({
       {/* Author info */}
       <div className="p-4 flex items-start justify-between">
         <div className="flex items-start space-x-3">
-          <img
-            src={authorAvatar}
-            alt={authorName}
-            className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100 flex-shrink-0"
-          />
+          {authorAvatar ? (
+            <img
+              src={authorAvatar}
+              alt={authorName}
+              className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-blue-800 text-white font-bold text-base flex items-center justify-center ring-2 ring-gray-100 flex-shrink-0">
+              {authorName[0]?.toUpperCase() || 'U'}
+            </div>
+          )}
           <div className="min-w-0">
             <h4 className="text-sm font-bold text-gray-900 leading-snug truncate">
               {authorName}

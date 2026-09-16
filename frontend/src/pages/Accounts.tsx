@@ -118,13 +118,31 @@ export const Accounts = () => {
               </div>
             ) : linkedInAccount ? (
               <div className="bg-green-50/50 border border-green-200 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-sm font-bold text-green-800">Connected</span>
+                <div className="flex items-center space-x-4">
+                  {linkedInAccount.profile_url ? (
+                    <img
+                      src={linkedInAccount.profile_url}
+                      alt={linkedInAccount.display_name}
+                      className="w-14 h-14 rounded-full object-cover ring-2 ring-green-500/40 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-green-100 text-green-800 font-bold text-xl flex items-center justify-center ring-2 ring-green-500/30">
+                      {linkedInAccount.display_name?.[0]?.toUpperCase() || 'L'}
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                      <span className="text-sm font-bold text-green-800">Connected & Verified</span>
+                    </div>
+                    <p className="text-base text-gray-900 font-bold">
+                      {linkedInAccount.display_name}
+                    </p>
+                    {linkedInAccount.email && (
+                      <p className="text-xs text-gray-500">{linkedInAccount.email}</p>
+                    )}
+                    <p className="text-[11px] text-gray-400">Connected on {format(parseISO(linkedInAccount.created_at), 'PPP')}</p>
                   </div>
-                  <p className="text-sm text-gray-900 font-medium">Account: <span className="text-gray-600 font-normal">{linkedInAccount.display_name || 'Authorized LinkedIn User'}</span></p>
-                  <p className="text-xs text-gray-500">Connected on: {format(parseISO(linkedInAccount.created_at), 'PPP')}</p>
                 </div>
                 
                 <button 

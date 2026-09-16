@@ -16,7 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export const Composer = () => {
-  const { user, isDemoMode } = useAuth();
+  const { user, isDemoMode, linkedInAccount } = useAuth();
   const navigate = useNavigate();
 
   const [caption, setCaption] = useState('');
@@ -159,7 +159,7 @@ export const Composer = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate('/calendar');
+        navigate('/schedule');
       }, 1200);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to save post.');
@@ -382,9 +382,9 @@ export const Composer = () => {
               caption={caption}
               previewUrl={previewUrl}
               fileType={file?.type || null}
-              authorName={user?.user_metadata?.full_name || 'Alex Vance'}
-              authorHeadline={user?.user_metadata?.headline || 'LinkedIn Content Creator • Automation Pioneer'}
-              authorAvatar={user?.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
+              authorName={linkedInAccount?.display_name || user?.user_metadata?.full_name || 'Your Profile'}
+              authorHeadline={linkedInAccount ? 'Connected LinkedIn Profile' : (user?.user_metadata?.headline || 'LinkedIn Creator')}
+              authorAvatar={linkedInAccount?.profile_url || user?.user_metadata?.avatar_url || ''}
             />
           </div>
 

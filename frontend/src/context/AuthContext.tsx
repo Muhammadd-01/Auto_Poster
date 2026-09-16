@@ -2,10 +2,23 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
+export interface SocialAccount {
+  id: string;
+  user_id: string;
+  provider: string;
+  provider_account_id: string;
+  display_name: string;
+  profile_url?: string;
+  email?: string;
+  created_at: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isDemoMode: boolean;
+  linkedInAccount: SocialAccount | null;
+  refreshLinkedInAccount: () => Promise<void>;
   signInWithDemo: () => void;
   signOut: () => Promise<void>;
 }
@@ -16,6 +29,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [linkedInAccount, setLinkedInAccount] = useState<SocialAccount | null>(null);
+
+  const fetchLinkedInAccount = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('provider', 'linkedin')
+        .maybeSingle();
+
+      if (data) {
+        setLinkedInAccount(data);
+      } else {
+        setLinkedInAccount(null);
+      }
+    } catch (err) {
+      console.warn('Error fetching linked account:', err);
+    }
+  };
+
+  const refreshLinkedInAccount = async () => {
+    if (user?.id) {
+      await fetchLinkedInAccount(user.id);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchLinkedInAccount(user.id);
+    } else {
+      setLinkedInAccount(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     // 1. Check for active demo session
@@ -91,8 +138,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     localStorage.removeItem('autopost_demo_user');
+    localStorage.removeItem('autopost_admin_session');
     setIsDemoMode(false);
     setUser(null);
+    setLinkedInAccount(null);
     try {
       await supabase.auth.signOut();
     } catch (err) {
@@ -101,7 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isDemoMode, signInWithDemo, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isDemoMode, linkedInAccount, refreshLinkedInAccount, signInWithDemo, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -91,7 +91,7 @@ export const Calendar = () => {
           </div>
 
           <Link
-            to="/composer"
+            to="/create"
             className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-md shadow-orange-600/25 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -144,7 +144,7 @@ export const Calendar = () => {
               {searchQuery ? 'No posts match your search criteria.' : 'You have no posts in this category.'}
             </p>
             <Link
-              to="/composer"
+              to="/create"
               className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-orange-600 hover:bg-orange-500 transition-colors"
             >
               <Plus className="w-4 h-4" />

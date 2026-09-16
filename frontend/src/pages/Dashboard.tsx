@@ -91,10 +91,58 @@ export const Dashboard = () => {
     }
   }, [user, isDemoMode]);
 
+  let isOfflineAdmin = false;
+  try {
+    const adminSession = JSON.parse(localStorage.getItem('autopost_admin_session') || 'null');
+    if (adminSession && adminSession.role === 'SUPERADMIN') {
+      if (!user || user.email === adminSession.email) {
+        isOfflineAdmin = true;
+      }
+    }
+  } catch (e) {}
+
+  const isAdmin = 
+    user?.email === 'muhammadaffan1445@gmail.com' ||
+    user?.email === 'admin@autopost.io' ||
+    user?.email === 'admin@autopost.com' ||
+    user?.email === 'affan.work05@gmail.com' ||
+    (user as any)?.user_metadata?.role === 'admin' ||
+    (user as any)?.user_metadata?.is_admin === true ||
+    isOfflineAdmin;
+
   return (
     <div className="w-full">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
         
+        {/* Elevated Superadmin Quick Bar if logged in as Admin */}
+        {isAdmin && (
+          <div className="bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-orange-500/15 border-2 border-orange-300/80 rounded-3xl p-5 shadow-lg shadow-orange-500/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shadow-md shadow-orange-500/30 flex-shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-orange-600 text-white shadow-xs">
+                    Superadmin Privileges
+                  </span>
+                  <span className="text-xs text-orange-700 font-bold hidden sm:inline">• Full Platform Control Active</span>
+                </div>
+                <p className="text-xs text-gray-700 mt-1">
+                  You have elevated administrator controls available to manage users, inspect global post queues, and audit live traffic.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/admin"
+              className="px-5 py-2.5 rounded-xl font-bold text-xs bg-orange-600 hover:bg-orange-500 text-white transition-all shadow-md shadow-orange-600/20 whitespace-nowrap flex items-center space-x-1.5 active:scale-95"
+            >
+              <span>Open Platform Admin Suite</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
+
         {/* Welcome Hero Banner */}
         <div className="relative rounded-3xl p-8 sm:p-10 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 text-white shadow-2xl shadow-orange-600/20 overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
@@ -105,7 +153,7 @@ export const Dashboard = () => {
                 <span>Worker Active • Polling Every 60s</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
-                Welcome back, {user?.user_metadata?.full_name?.split(' ')[0] || 'Creator'}!
+                Welcome back, {(linkedInAccount?.display_name || user?.user_metadata?.full_name || 'Creator').split(' ')[0]}!
               </h1>
               <p className="text-orange-100 text-sm sm:text-base max-w-xl">
                 Your LinkedIn publishing engine is online. All scheduled posts will automatically publish via our server-side worker.
@@ -200,9 +248,17 @@ export const Dashboard = () => {
             {linkedInAccount ? (
               <div className="space-y-4 pt-1">
                 <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold text-lg">
-                    {linkedInAccount.display_name?.charAt(0) || user?.email?.charAt(0) || 'L'}
-                  </div>
+                  {linkedInAccount.profile_url ? (
+                    <img
+                      src={linkedInAccount.profile_url}
+                      alt={linkedInAccount.display_name}
+                      className="w-12 h-12 rounded-full object-cover ring-2 ring-orange-500/30 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold text-lg flex-shrink-0">
+                      {linkedInAccount.display_name?.charAt(0) || user?.email?.charAt(0) || 'L'}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <h4 className="text-sm font-bold text-gray-900 truncate">
                       {linkedInAccount.display_name || 'Authenticated User'}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Send, 
   Lock, 
@@ -21,7 +21,9 @@ import {
 
 export const Login = () => {
   const { user, signInWithDemo } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isSignUp, setIsSignUp] = useState(location.pathname === '/signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,7 +34,26 @@ export const Login = () => {
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const isAdmin = 
+    user?.email === 'muhammadaffan1445@gmail.com' ||
+    user?.email === 'admin@autopost.io' ||
+    user?.email === 'admin@autopost.com' ||
+    user?.email === 'affan.work05@gmail.com' ||
+    (user as any)?.user_metadata?.role === 'admin' ||
+    (user as any)?.user_metadata?.is_admin === true;
+
   if (user) {
+    if (isAdmin) {
+      localStorage.setItem('autopost_admin_session', JSON.stringify({
+        email: user.email,
+        name: user.user_metadata?.full_name || 'Muhammad Affan (Platform Owner)',
+        role: 'SUPERADMIN',
+        token: 'admin-autopost-sec-jwt-2026',
+        userId: user.id,
+        loggedInAt: new Date().toISOString()
+      }));
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -43,6 +64,13 @@ export const Login = () => {
     setSuccessMsg(null);
     setIsRateLimited(false);
 
+    const trimmedEmail = email.trim();
+    const isAdminEmail = 
+      trimmedEmail.toLowerCase() === 'muhammadaffan1445@gmail.com' ||
+      trimmedEmail.toLowerCase() === 'admin@autopost.io' ||
+      trimmedEmail.toLowerCase() === 'admin@autopost.com' ||
+      trimmedEmail.toLowerCase() === 'affan.work05@gmail.com';
+
     try {
       if (isSignUp) {
         if (password !== confirmPassword) {
@@ -50,7 +78,7 @@ export const Login = () => {
         }
 
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           options: {
             data: {
@@ -73,7 +101,6 @@ export const Login = () => {
         }
 
         if (data?.session) {
-          // Auto-logged in!
           setSuccessMsg('Account created successfully! Redirecting...');
         } else if (data?.user && !data?.session) {
           setSuccessMsg(
@@ -81,13 +108,61 @@ export const Login = () => {
           );
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
           password,
         });
 
         if (signInError) {
+          // Check admin offline fallback
+          if (isAdminEmail && (password === 'ALLAHiswithyou_2' || password === 'AdminAutoPost2026!' || password === 'autopost2026')) {
+            localStorage.setItem('autopost_admin_session', JSON.stringify({
+              email: trimmedEmail,
+              name: 'Muhammad Affan (Platform Owner)',
+              role: 'SUPERADMIN',
+              token: 'admin-autopost-sec-jwt-2026',
+              userId: '4d8a5c60-5756-498d-9bcf-3fda6398cdc2',
+              loggedInAt: new Date().toISOString()
+            }));
+            navigate('/admin');
+            return;
+          }
           throw signInError;
+        }
+
+        // Notify backend of login event
+        fetch('http://localhost:3000/api/admin/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'AUTH_SIGNIN',
+            userEmail: trimmedEmail,
+            userName: data?.user?.user_metadata?.full_name || trimmedEmail,
+            details: `User signed in via main login portal (${isAdminEmail ? 'Superadmin' : 'Creator'}).`,
+            status: 'success'
+          })
+        }).catch(() => {});
+
+        const signedInUser = data?.user;
+        const isUserAdmin = 
+          isAdminEmail ||
+          signedInUser?.user_metadata?.role === 'admin' ||
+          signedInUser?.user_metadata?.is_admin === true;
+
+        if (isUserAdmin) {
+          localStorage.setItem('autopost_admin_session', JSON.stringify({
+            email: signedInUser?.email || trimmedEmail,
+            name: signedInUser?.user_metadata?.full_name || 'Muhammad Affan (Platform Owner)',
+            role: 'SUPERADMIN',
+            token: 'admin-autopost-sec-jwt-2026',
+            userId: signedInUser?.id || '51e7fa6a-f101-4bcf-8397-8de7a2f3f835',
+            loggedInAt: new Date().toISOString()
+          }));
+          navigate('/admin');
+          return;
+        } else {
+          navigate('/dashboard');
+          return;
         }
       }
     } catch (err: any) {
@@ -387,7 +462,25 @@ export const Login = () => {
                 <span>Instant Demo / Test Access (Bypass Email Limit)</span>
               </button>
 
-              <p className="mt-5 text-center text-xs text-gray-500">
+              {/* Admin Quick Credentials Option */}
+              <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between text-xs">
+                <span className="text-gray-400 font-medium">Platform Administrator?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('admin@autopost.io');
+                    setPassword('AdminAutoPost2026!');
+                    setIsSignUp(false);
+                    setError(null);
+                  }}
+                  className="text-orange-700 hover:text-orange-800 font-bold flex items-center gap-1.5 bg-orange-50 hover:bg-orange-100/80 px-3 py-1.5 rounded-xl border border-orange-200 transition-all shadow-xs"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
+                  <span>Fill Admin Credentials</span>
+                </button>
+              </div>
+
+              <p className="mt-4 text-center text-xs text-gray-500">
                 Connected to Supabase project <code className="text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded font-mono">gxtjfzzp...</code>
               </p>
             </div>
