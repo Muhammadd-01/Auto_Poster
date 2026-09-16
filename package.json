@@ -1,0 +1,11 @@
+{
+  "name": "linkedin-autoposter-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo \"Run frontend and backend in separate terminals: npm run dev:frontend AND npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "start:backend": "cd backend && npm run start"
+  }
+}
