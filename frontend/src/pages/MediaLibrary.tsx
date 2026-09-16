@@ -1,20 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Navbar } from '../components/Navbar';
 import { 
   Image as ImageIcon, 
   Video, 
   Upload, 
   Trash2, 
-  Plus, 
-  FileText, 
   HardDrive, 
-  Clock, 
   Check, 
   Copy 
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
 
 export const MediaLibrary = () => {
   const { user, isDemoMode } = useAuth();
@@ -32,7 +27,7 @@ export const MediaLibrary = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('media')
         .select('*')
         .eq('user_id', user.id)
@@ -138,9 +133,7 @@ export const MediaLibrary = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50/50 via-white to-amber-50/40 pb-16">
-      <Navbar />
-
+    <div className="w-full">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

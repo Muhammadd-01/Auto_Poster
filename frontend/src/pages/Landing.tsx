@@ -1,23 +1,17 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Send, 
-  Sparkles, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Zap, 
-  Clock, 
-  Link as LinkIcon, 
   ArrowRight, 
+  CheckCircle2, 
+  Send, 
   Image as ImageIcon, 
-  Video, 
-  Calendar, 
+  Clock, 
+  ShieldCheck, 
   Database, 
-  Lock, 
-  HelpCircle,
-  TrendingUp,
+  Sparkles,
+  Link as LinkIcon,
   Cpu
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const Landing = () => {
   return (
@@ -64,7 +58,12 @@ export const Landing = () => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-tr from-orange-300/20 via-amber-300/20 to-transparent blur-3xl pointer-events-none rounded-full"></div>
         <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none"></div>
 
-        <div className="relative max-w-5xl mx-auto px-6 text-center space-y-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative max-w-5xl mx-auto px-6 text-center space-y-8"
+        >
           
           <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-orange-100/80 border border-orange-200 text-orange-800 text-xs font-bold shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-orange-600" />
@@ -114,7 +113,7 @@ export const Landing = () => {
             </div>
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 2. HOW IT WORKS */}
@@ -130,7 +129,13 @@ export const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <motion.div 
+            initial="hidden" 
+            whileInView="show" 
+            viewport={{ once: true, amount: 0.2 }} 
+            variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.15 } } }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-8"
+          >
             {[
               {
                 step: '01',
@@ -159,7 +164,11 @@ export const Landing = () => {
             ].map((card) => {
               const Icon = card.icon;
               return (
-                <div key={card.step} className="bg-orange-50/50 rounded-3xl p-8 border border-orange-100 relative group hover:bg-orange-50 hover:shadow-lg transition-all">
+                <motion.div 
+                  variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+                  key={card.step} 
+                  className="bg-orange-50/50 rounded-3xl p-8 border border-orange-100 relative group hover:bg-orange-50 hover:shadow-lg transition-all"
+                >
                   <span className="text-4xl font-black text-orange-200 group-hover:text-orange-300 transition-colors">
                     {card.step}
                   </span>
@@ -168,10 +177,10 @@ export const Landing = () => {
                   </div>
                   <h4 className="text-lg font-bold text-gray-900 mb-2">{card.title}</h4>
                   <p className="text-xs leading-relaxed text-gray-500">{card.desc}</p>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -235,10 +244,16 @@ export const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center">
+          <motion.div 
+            initial="hidden" 
+            whileInView="show" 
+            viewport={{ once: true, amount: 0.2 }} 
+            variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.2 } } }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center"
+          >
             
             {/* Free */}
-            <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-6">
+            <motion.div variants={{ hidden: { opacity: 0, x: -20 }, show: { opacity: 1, x: 0 } }} className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-6">
               <div>
                 <h4 className="text-lg font-bold text-gray-900">Free</h4>
                 <p className="text-xs text-gray-500 mt-1">Perfect for solo creators starting out</p>
@@ -253,10 +268,10 @@ export const Landing = () => {
               <Link to="/login" className="block text-center py-3 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-900 transition-colors">
                 Get Started Free
               </Link>
-            </div>
+            </motion.div>
 
             {/* Pro (Highlighted) */}
-            <div className="bg-gradient-to-b from-orange-600 to-amber-600 rounded-3xl p-8 text-white shadow-2xl shadow-orange-600/25 space-y-6 md:-translate-y-2 relative">
+            <motion.div variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }} className="bg-gradient-to-b from-orange-600 to-amber-600 rounded-3xl p-8 text-white shadow-2xl shadow-orange-600/25 space-y-6 md:-translate-y-2 relative">
               <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
                 Most Popular
               </div>
@@ -274,10 +289,10 @@ export const Landing = () => {
               <Link to="/login" className="block text-center py-3.5 rounded-xl text-xs font-bold bg-white text-orange-700 hover:bg-orange-50 shadow-md transition-colors">
                 Start 14-Day Free Trial
               </Link>
-            </div>
+            </motion.div>
 
             {/* Agency */}
-            <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-6">
+            <motion.div variants={{ hidden: { opacity: 0, x: 20 }, show: { opacity: 1, x: 0 } }} className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-6">
               <div>
                 <h4 className="text-lg font-bold text-gray-900">Agency / Team</h4>
                 <p className="text-xs text-gray-500 mt-1">Multi-account and company page support</p>
@@ -292,9 +307,9 @@ export const Landing = () => {
               <Link to="/login" className="block text-center py-3 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-900 transition-colors">
                 Contact Sales
               </Link>
-            </div>
+            </motion.div>
 
-          </div>
+          </motion.div>
         </div>
       </section>
 

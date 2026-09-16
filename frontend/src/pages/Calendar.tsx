@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Navbar } from '../components/Navbar';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { 
@@ -11,10 +10,8 @@ import {
   FileText, 
   Search, 
   Plus, 
-  Filter, 
   Calendar as CalendarIcon,
-  Trash2,
-  ExternalLink
+  Trash2
 } from 'lucide-react';
 
 export const Calendar = () => {
@@ -35,7 +32,7 @@ export const Calendar = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('posts')
         .select('*, post_media(media(*))')
         .eq('user_id', user.id)
@@ -79,9 +76,7 @@ export const Calendar = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50/50 via-white to-amber-50/40 pb-16">
-      <Navbar />
-
+    <div className="w-full">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
         
         {/* Header */}

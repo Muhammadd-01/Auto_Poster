@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Navbar } from '../components/Navbar';
 import { Link } from 'react-router-dom';
 import { 
-  Send, 
   Link as LinkIcon, 
   Plus, 
   Calendar as CalendarIcon, 
@@ -12,56 +10,61 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowUpRight, 
-  Sparkles, 
-  Activity, 
   Layers, 
   FileText,
-  ShieldCheck,
-  RefreshCw
+  ShieldCheck
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 export const Dashboard = () => {
   const { user, isDemoMode } = useAuth();
-  const [isConnected, setIsConnected] = useState(true);
   const [metrics, setMetrics] = useState({ total: 0, published: 0, scheduled: 0, failed: 0 });
   const [recentPosts, setRecentPosts] = useState<any[]>([]);
+  const [linkedInAccount, setLinkedInAccount] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchMetricsAndPosts = async () => {
+  const fetchDashboardData = async () => {
     if (!user) return;
 
     if (isDemoMode) {
-      const stored = JSON.parse(localStorage.getItem('autopost_demo_posts') || '[]');
-      const counts = { total: stored.length, published: 0, scheduled: 0, failed: 0 };
-      stored.forEach((p: any) => {
-        if (p.status === 'PUBLISHED') counts.published++;
-        if (p.status === 'SCHEDULED' || p.status === 'PROCESSING') counts.scheduled++;
-        if (p.status === 'FAILED') counts.failed++;
-      });
-      setMetrics(counts);
-      setRecentPosts(stored.slice(0, 5));
+      // Demo logic...
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      // 1. Fetch Posts
+      const { data: postsData } = await supabase
         .from('posts')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (data) {
-        const counts = { total: data.length, published: 0, scheduled: 0, failed: 0 };
-        data.forEach((p) => {
+      if (postsData) {
+        const counts = { total: postsData.length, published: 0, scheduled: 0, failed: 0 };
+        postsData.forEach((p) => {
           if (p.status === 'PUBLISHED') counts.published++;
           if (p.status === 'SCHEDULED' || p.status === 'PROCESSING') counts.scheduled++;
           if (p.status === 'FAILED') counts.failed++;
         });
         setMetrics(counts);
-        setRecentPosts(data.slice(0, 5));
+        setRecentPosts(postsData.slice(0, 5));
       }
+
+      // 2. Fetch LinkedIn Account Status
+      const { data: accountsData } = await supabase
+        .from('social_accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('provider', 'linkedin')
+        .single();
+      
+      if (accountsData) {
+        setLinkedInAccount(accountsData);
+      } else {
+        setLinkedInAccount(null);
+      }
+      
     } catch (err) {
       console.warn('Fetch metrics error:', err);
     } finally {
@@ -70,7 +73,7 @@ export const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchMetricsAndPosts();
+    fetchDashboardData();
 
     if (!isDemoMode && user) {
       const subscription = supabase
@@ -78,7 +81,7 @@ export const Dashboard = () => {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${user?.id}` },
-          fetchMetricsAndPosts
+          fetchDashboardData
         )
         .subscribe();
 
@@ -88,14 +91,8 @@ export const Dashboard = () => {
     }
   }, [user, isDemoMode]);
 
-  const handleConnectLinkedIn = () => {
-    setIsConnected(true);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50/50 via-white to-amber-50/40 pb-16">
-      <Navbar />
-
+    <div className="w-full">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
         
         {/* Welcome Hero Banner */}
@@ -117,14 +114,14 @@ export const Dashboard = () => {
 
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                to="/composer"
+                to="/create"
                 className="px-6 py-3.5 rounded-xl font-bold text-sm bg-white text-orange-700 hover:bg-orange-50 shadow-lg shadow-black/10 active:scale-95 transition-all flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create New Post</span>
               </Link>
               <Link
-                to="/calendar"
+                to="/schedule"
                 className="px-5 py-3.5 rounded-xl font-bold text-sm bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all flex items-center space-x-2"
               >
                 <CalendarIcon className="w-4 h-4" />
@@ -195,60 +192,47 @@ export const Dashboard = () => {
                 </div>
                 <h3 className="text-sm font-bold text-gray-900">LinkedIn Account</h3>
               </div>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800">
-                Active
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${linkedInAccount ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                {linkedInAccount ? 'Active' : 'Offline'}
               </span>
             </div>
 
-            {isConnected ? (
+            {linkedInAccount ? (
               <div className="space-y-4 pt-1">
                 <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120"
-                    alt="Profile"
-                    className="w-12 h-12 rounded-full object-cover ring-2 ring-orange-500/30"
-                  />
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold text-lg">
+                    {linkedInAccount.display_name?.charAt(0) || user?.email?.charAt(0) || 'L'}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="text-sm font-bold text-gray-900 truncate">
-                      {user?.user_metadata?.full_name || 'Alex Vance'}
+                      {linkedInAccount.display_name || 'Authenticated User'}
                     </h4>
-                    <p className="text-xs text-gray-500 truncate">Client ID: 77bk0ls0m6tm57</p>
+                    <p className="text-xs text-gray-500 truncate">Token Linked</p>
                     <p className="text-[11px] text-green-600 font-semibold flex items-center mt-0.5">
-                      <ShieldCheck className="w-3 h-3 mr-1" /> Direct Token Linked
+                      <ShieldCheck className="w-3 h-3 mr-1" /> Ready to publish
                     </p>
                   </div>
                 </div>
 
-                <div className="text-xs text-gray-500 space-y-1 bg-orange-50/50 p-3 rounded-xl border border-orange-100">
-                  <div className="flex justify-between">
-                    <span>OAuth Scopes:</span>
-                    <span className="font-mono text-gray-700">w_member_social</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Token Expiration:</span>
-                    <span className="font-semibold text-gray-700">58 days remaining</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsConnected(false)}
-                  className="w-full py-2 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors border border-red-200"
+                <Link
+                  to="/accounts"
+                  className="block text-center w-full py-2 text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
                 >
-                  Disconnect LinkedIn Account
-                </button>
+                  Manage Connection
+                </Link>
               </div>
             ) : (
               <div className="space-y-4 text-center py-4">
                 <p className="text-xs text-gray-600">
                   No LinkedIn account connected yet. Authorize to start publishing directly.
                 </p>
-                <button
-                  onClick={handleConnectLinkedIn}
+                <Link
+                  to="/accounts"
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#0077b5] hover:bg-[#005f93] shadow-md shadow-blue-500/20 transition-all flex items-center justify-center space-x-2"
                 >
                   <LinkIcon className="w-4 h-4 fill-white" />
                   <span>Connect with LinkedIn</span>
-                </button>
+                </Link>
               </div>
             )}
           </div>
@@ -261,7 +245,7 @@ export const Dashboard = () => {
                 <p className="text-xs text-gray-500">Live posts tracked by the publisher engine</p>
               </div>
               <Link
-                to="/calendar"
+                to="/schedule"
                 className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center space-x-1"
               >
                 <span>View All History</span>
@@ -279,7 +263,7 @@ export const Dashboard = () => {
                   Create your first LinkedIn post to watch it get published automatically.
                 </p>
                 <Link
-                  to="/composer"
+                  to="/create"
                   className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-orange-600 hover:bg-orange-500 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />

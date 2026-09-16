@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Navbar } from '../components/Navbar';
 import { LinkedInPreview } from '../components/LinkedInPreview';
 import { 
   Image as ImageIcon, 
   Video, 
-  Calendar as CalendarIcon, 
   Clock, 
   Send, 
   X, 
   Sparkles, 
-  Globe, 
   CheckCircle2, 
   FileText,
   AlertCircle
@@ -172,9 +169,7 @@ export const Composer = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50/60 via-white to-amber-50/40 pb-16">
-      <Navbar />
-
+    <div className="w-full">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
