@@ -12,6 +12,8 @@ import { Accounts } from './pages/Accounts';
 import { Help } from './pages/Help';
 import { Landing } from './pages/Landing';
 import { Settings } from './pages/Settings';
+import { Profile } from './pages/Profile';
+import { Notifications } from './pages/Notifications';
 import { DashboardLayout } from './components/DashboardLayout';
 import { MarketingLayout } from './components/MarketingLayout';
 import { FeaturesPage } from './pages/marketing/FeaturesPage';
@@ -120,6 +122,8 @@ function App() {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/help" element={<Help />} />
             </Route>
 

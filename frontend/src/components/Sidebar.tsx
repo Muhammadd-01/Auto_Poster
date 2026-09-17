@@ -9,12 +9,13 @@ import {
   BarChart3,
   Settings,
   HelpCircle,
-  LogOut, 
-  Zap,
+  LogOut,
   Send,
   Menu,
   X,
-  ShieldCheck
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { LogoutModal } from './LogoutModal';
@@ -36,13 +37,10 @@ const regularBottomNavLinks = [
 
 const adminNavLinks = [
   { name: 'Platform Admin', path: '/admin', icon: ShieldCheck },
-  { name: 'User Registry', path: '/admin?tab=users', icon: Users },
-  { name: 'Global Post Queue', path: '/admin?tab=posts', icon: CalendarIcon },
-  { name: 'Live Traffic Feed', path: '/admin?tab=activity', icon: BarChart3 },
 ];
 
-export const Sidebar = () => {
-  const { user, signOut, isDemoMode, linkedInAccount } = useAuth();
+export const Sidebar = ({ isCollapsed = false, toggleSidebar }: { isCollapsed?: boolean, toggleSidebar?: () => void }) => {
+  const { user, signOut, linkedInAccount } = useAuth();
   const location = useLocation();
   const toast = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -87,19 +85,28 @@ export const Sidebar = () => {
 
   const NavItem = ({ link }: { link: any }) => {
     const Icon = link.icon;
-    const isActive = location.pathname === link.path || (location.pathname + location.search) === link.path;
+    
+    let isActive = false;
+    if (link.path === '/admin') {
+      isActive = location.pathname.startsWith('/admin');
+    } else if (link.path.includes('?')) {
+      isActive = (location.pathname + location.search) === link.path;
+    } else {
+      isActive = location.pathname === link.path;
+    }
     
     return (
       <Link
         to={link.path}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group ${
+        title={isCollapsed ? link.name : undefined}
+        className={`flex items-center ${isCollapsed ? 'justify-center px-0 mx-2' : 'space-x-3 px-4'} py-3 rounded-xl text-sm font-bold transition-all duration-200 group ${
           isActive
             ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
             : 'text-gray-600 hover:text-gray-900 hover:bg-orange-50'
         }`}
       >
         <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-orange-500'} transition-colors`} />
-        <span>{link.name}</span>
+        {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{link.name}</span>}
       </Link>
     );
   };
@@ -172,58 +179,78 @@ export const Sidebar = () => {
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 h-screen bg-white border-r border-orange-100 sticky top-0 left-0 z-30">
+      <aside className={`hidden md:flex flex-col ${isCollapsed ? 'w-[5.5rem]' : 'w-64'} h-screen bg-white border-r border-orange-100 sticky top-0 left-0 z-30 transition-all duration-300 relative`}>
         
+        {/* Toggle Button */}
+        {toggleSidebar && (
+          <button 
+            onClick={toggleSidebar}
+            className="absolute right-0 translate-x-1/2 top-7 bg-white border border-gray-200 shadow-sm rounded-full p-1 text-gray-500 hover:text-orange-500 hover:bg-orange-50 z-50 transition-colors"
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        )}
+
         {/* Logo */}
-        <div className="p-6">
-          <Link to="/" className="flex items-center space-x-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-400 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200">
+        <div className={`p-6 ${isCollapsed ? 'flex justify-center px-0' : ''}`}>
+          <Link to="/" className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2.5'} group`}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-400 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
               <Send className="w-4.5 h-4.5 -rotate-45" />
             </div>
-            <span className="text-xl font-black tracking-tight text-gray-900">
-              Auto<span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500">Post</span>
-            </span>
+            {!isCollapsed && (
+              <span className="text-xl font-black tracking-tight text-gray-900 whitespace-nowrap overflow-hidden">
+                Auto<span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500">Post</span>
+              </span>
+            )}
           </Link>
         </div>
 
         {/* Main Nav */}
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
-          {mainNavLinks.map(link => <NavItem key={link.path} link={link} />)}
+        <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden pb-4">
+          <div className="px-2">
+            {mainNavLinks.map(link => <NavItem key={link.path} link={link} />)}
+          </div>
           
           {/* Admin Controls Section */}
           {isAdmin && (
             location.pathname.startsWith('/admin') ? (
-              <div className="py-3">
-                <div className="px-4 text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1.5 flex items-center justify-between">
-                  <span>Platform Controls</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+              <div className="py-2 mt-4 border-t border-gray-50 pt-4">
+                {!isCollapsed ? (
+                  <div className="px-6 text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1.5 flex items-center justify-between whitespace-nowrap">
+                    <span>Platform Controls</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                  </div>
+                ) : (
+                  <div className="flex justify-center mb-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span></div>
+                )}
+                <div className="px-2">
+                  {adminNavLinks.map(link => <NavItem key={link.path} link={link} />)}
                 </div>
-                {adminNavLinks.map(link => <NavItem key={link.path} link={link} />)}
               </div>
             ) : (
-              <div className="py-1">
+              <div className="py-1 px-2 border-t border-gray-50 pt-2 mt-2">
                 <NavItem key={adminNavLinks[0].path} link={adminNavLinks[0]} />
               </div>
             )
           )}
 
-          <div className="py-3">
-            <div className="px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Settings & Tools</div>
-            {regularBottomNavLinks.map(link => <NavItem key={link.path} link={link} />)}
+          <div className="py-2 mt-2 border-t border-gray-50 pt-4">
+            {!isCollapsed ? (
+              <div className="px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 whitespace-nowrap">Settings & Tools</div>
+            ) : (
+              <div className="w-8 h-px bg-gray-200 mx-auto mb-3"></div>
+            )}
+            <div className="px-2">
+              {regularBottomNavLinks.map(link => <NavItem key={link.path} link={link} />)}
+            </div>
           </div>
         </nav>
 
         {/* Footer / User */}
-        <div className="p-4 border-t border-gray-100">
-          {isDemoMode && (
-            <div className="mb-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-bold text-amber-800">Demo Sandbox</span>
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 transition-colors">
-            <div className="flex items-center space-x-3 overflow-hidden">
+        <div className={`p-4 border-t border-gray-100 ${isCollapsed ? 'px-2 pb-6' : ''}`}>
+
+          <div className={`flex items-center ${isCollapsed ? 'flex-col space-y-3' : 'justify-between'} p-2 rounded-xl hover:bg-gray-50 transition-colors`}>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3'} overflow-hidden`}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt={displayName} className="w-9 h-9 rounded-full object-cover ring-2 ring-orange-500/30 flex-shrink-0" />
               ) : (
@@ -231,35 +258,48 @@ export const Sidebar = () => {
                   {displayName[0]?.toUpperCase()}
                 </div>
               )}
-              <div className="min-w-0">
-                <span className="text-sm font-semibold text-gray-700 truncate block">
-                  {displayName}
-                </span>
-                <div className="flex items-center space-x-1.5 mt-0.5">
-                  {isAdmin && (
-                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200">
-                      SUPERADMIN
-                    </span>
-                  )}
-                  {linkedInAccount ? (
-                    <span className="text-[11px] text-blue-600 font-bold flex items-center">
-                      LinkedIn Active
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-gray-400 block truncate">
-                      {user?.email || 'Offline'}
-                    </span>
-                  )}
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <span className="text-sm font-semibold text-gray-700 truncate block">
+                    {displayName}
+                  </span>
+                  <div className="flex items-center space-x-1.5 mt-0.5">
+                    {isAdmin && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200">
+                        SUPERADMIN
+                      </span>
+                    )}
+                    {linkedInAccount ? (
+                      <span className="text-[11px] text-blue-600 font-bold flex items-center">
+                        LinkedIn Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-gray-400 block truncate">
+                        {user?.email || 'Offline'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-            <button
-              onClick={() => setShowLogoutModal(true)}
-              title="Sign Out"
-              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            
+            {isCollapsed ? (
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                title="Sign Out"
+                className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                title="Sign Out"
+                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </aside>

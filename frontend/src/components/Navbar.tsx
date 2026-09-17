@@ -6,12 +6,11 @@ import {
   PlusCircle, 
   Calendar as CalendarIcon, 
   Image as ImageIcon, 
-  LogOut, 
-  Zap
+  LogOut
 } from 'lucide-react';
 
 export const Navbar = () => {
-  const { user, signOut, isDemoMode } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
 
   const navLinks = [
@@ -62,12 +61,6 @@ export const Navbar = () => {
 
           {/* Right User & Actions */}
           <div className="flex items-center space-x-3">
-            {isDemoMode && (
-              <span className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                <Zap className="w-3 h-3 text-amber-600 fill-amber-500" />
-                <span>Demo Sandbox</span>
-              </span>
-            )}
 
             <div className="flex items-center space-x-2 bg-orange-50/80 px-3 py-1.5 rounded-full border border-orange-200/60">
               <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 text-white text-xs font-bold flex items-center justify-center shadow-xs">

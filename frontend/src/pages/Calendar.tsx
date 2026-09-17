@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { 
   Clock, 
   CheckCircle2, 
@@ -11,25 +13,27 @@ import {
   Search, 
   Plus, 
   Calendar as CalendarIcon,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 
 export const Calendar = () => {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
+  const toast = useToast();
   const [posts, setPosts] = useState<any[]>([]);
   const [filter, setFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   const fetchPosts = async () => {
-    if (!user) return;
-
-    if (isDemoMode) {
-      const stored = JSON.parse(localStorage.getItem('autopost_demo_posts') || '[]');
-      setPosts(stored);
+    setLoading(true);
+    if (!user) {
       setLoading(false);
       return;
     }
+
 
     try {
       const { data } = await supabase
@@ -48,24 +52,65 @@ export const Calendar = () => {
 
   useEffect(() => {
     fetchPosts();
-  }, [user, isDemoMode]);
+  }, [user]);
 
-  const handleDelete = async (postId: string) => {
-    if (!confirm('Are you sure you want to cancel and remove this post?')) return;
-
-    if (isDemoMode) {
-      const stored = JSON.parse(localStorage.getItem('autopost_demo_posts') || '[]');
-      const updated = stored.filter((p: any) => p.id !== postId);
-      localStorage.setItem('autopost_demo_posts', JSON.stringify(updated));
-      setPosts(updated);
+  const handleSyncLinkedIn = async () => {
+    if (!user?.id) {
+      toast.warning('Authentication Required', 'Please log in to sync with LinkedIn.');
       return;
     }
+    setIsSyncing(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/sync/linkedin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to sync with LinkedIn');
+      }
+      if (data.restricted) {
+        toast.info('Dashboard Refreshed', data.message);
+      } else {
+        toast.success('LinkedIn Synced!', data.message || `Synced ${data.syncedCount} posts.`);
+      }
+      fetchPosts();
+    } catch (err: any) {
+      toast.error('Sync Notice', err.message || 'Could not sync historical posts from LinkedIn.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!postToDelete) return;
+    const postId = postToDelete;
+
 
     try {
-      await supabase.from('posts').delete().eq('id', postId);
+      try {
+        const res = await fetch('http://localhost:3000/api/posts/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId, userId: user?.id })
+        });
+        const json = await res.json();
+        if (json.deletedFromLinkedIn) {
+          toast.success('Deleted From LinkedIn & Database', 'Post removed from both your live LinkedIn feed and dashboard.');
+        } else {
+          toast.success('Post Deleted', 'Post removed from your schedule.');
+        }
+      } catch {
+        await supabase.from('posts').delete().eq('id', postId);
+        toast.info('Post Deleted', 'Removed from database.');
+      }
       setPosts((prev) => prev.filter((p) => p.id !== postId));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete error:', err);
+      toast.error('Delete Failed', err.message || 'Could not delete post.');
+    } finally {
+      setPostToDelete(null);
     }
   };
 
@@ -90,13 +135,24 @@ export const Calendar = () => {
             </p>
           </div>
 
-          <Link
-            to="/create"
-            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-md shadow-orange-600/25 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule New Post</span>
-          </Link>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleSyncLinkedIn}
+              disabled={isSyncing}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold text-xs text-gray-700 bg-white hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 shadow-sm transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-orange-500' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync LinkedIn'}</span>
+            </button>
+
+            <Link
+              to="/create"
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 hover:from-orange-500 hover:to-amber-400 shadow-md shadow-orange-600/25 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Schedule New Post</span>
+            </Link>
+          </div>
         </div>
 
         {/* Filter & Search Toolbar */}
@@ -219,7 +275,7 @@ export const Calendar = () => {
 
                   <div className="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
                     <button
-                      onClick={() => handleDelete(post.id)}
+                      onClick={() => setPostToDelete(post.id)}
                       title="Delete / Cancel Post"
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                     >
@@ -233,6 +289,15 @@ export const Calendar = () => {
         )}
 
       </main>
+      
+      <ConfirmModal
+        isOpen={postToDelete !== null}
+        title="Cancel Post"
+        message="Are you sure you want to cancel and remove this post?"
+        confirmText="Yes, Cancel Post"
+        onClose={() => setPostToDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };

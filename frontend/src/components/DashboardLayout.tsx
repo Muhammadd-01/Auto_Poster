@@ -1,14 +1,22 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { useLocation, useOutlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { TopNavbar } from './TopNavbar';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export const DashboardLayout = () => {
   const location = useLocation();
+  const outlet = useOutlet();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">
-      <Sidebar />
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+      />
       <div className="flex-1 flex flex-col min-w-0">
+        <TopNavbar />
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -18,7 +26,7 @@ export const DashboardLayout = () => {
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="flex-1 pb-16"
           >
-            <Outlet />
+            {outlet}
           </motion.div>
         </AnimatePresence>
       </div>

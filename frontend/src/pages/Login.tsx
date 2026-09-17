@@ -12,15 +12,12 @@ import {
   Sparkles, 
   CheckCircle2, 
   ShieldCheck, 
-  Zap, 
-  Clock, 
   AlertTriangle,
-  ArrowRight,
-  Link as LinkIcon
+  ArrowRight
 } from 'lucide-react';
 
 export const Login = () => {
-  const { user, signInWithDemo } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSignUp, setIsSignUp] = useState(location.pathname === '/signup');
@@ -191,13 +188,6 @@ export const Login = () => {
         </Link>
         <div className="flex items-center space-x-3 text-sm">
           <span className="text-gray-500 hidden sm:inline">Ready to post directly to LinkedIn?</span>
-          <button
-            onClick={signInWithDemo}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-orange-700 bg-orange-100/80 hover:bg-orange-200/80 border border-orange-300/60 shadow-sm transition-all flex items-center space-x-1.5"
-          >
-            <Zap className="w-3.5 h-3.5 text-orange-600 fill-orange-500" />
-            <span>1-Click Test Access</span>
-          </button>
         </div>
       </header>
 
@@ -222,40 +212,6 @@ export const Login = () => {
             <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-lg">
               Upload your captions and media, set your schedule, and let our idempotent server-side worker deliver your posts directly to LinkedIn.
             </p>
-
-            {/* Live Interactive Post Mockup */}
-            <div className="bg-white/90 backdrop-blur-md rounded-2xl p-5 shadow-xl shadow-orange-950/5 border border-orange-100 relative group transition-all hover:shadow-2xl hover:border-orange-200">
-              <div className="flex items-start space-x-3">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120"
-                  alt="Avatar"
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-orange-500/20"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-gray-900">Alex Vance</h4>
-                    <span className="flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
-                      <Clock className="w-3 h-3 mr-1 text-orange-500" /> Scheduled
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 truncate">Founder & LinkedIn Top Voice • 24k followers</p>
-                  <p className="text-xs text-gray-400">Scheduled for Today at 5:30 PM (Asia/Karachi)</p>
-                </div>
-              </div>
-
-              <div className="mt-3 text-xs text-gray-800 leading-relaxed font-normal bg-orange-50/40 p-3 rounded-xl border border-orange-100/60">
-                “Consistency on LinkedIn isn’t about grinding 24/7. It’s about building automated delivery systems that run while you sleep. 🚀 #LinkedInGrowth #Productivity”
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                <span className="flex items-center text-green-600 font-semibold">
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Idempotent Worker Ready
-                </span>
-                <span className="flex items-center text-orange-600 font-semibold">
-                  <LinkIcon className="w-3.5 h-3.5 mr-1 fill-orange-600" /> Direct REST API
-                </span>
-              </div>
-            </div>
 
             {/* Feature Badges */}
             <div className="grid grid-cols-2 gap-3 pt-2">
@@ -316,7 +272,7 @@ export const Login = () => {
                     <p className="font-semibold">{error}</p>
                     {isRateLimited && (
                       <p className="mt-2 text-xs text-red-600 font-normal">
-                        Tip: Supabase's default email provider throttles confirmations on free accounts. Click the orange <strong>"1-Click Instant Demo"</strong> button below to log in and use every feature right away!
+                        Tip: Supabase's default email provider throttles confirmations on free accounts. Please try again later.
                       </p>
                     )}
                   </div>
@@ -442,25 +398,6 @@ export const Login = () => {
                 </button>
               </form>
 
-              {/* Divider */}
-              <div className="relative my-6 text-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <span className="relative px-3 bg-white text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Or test immediately
-                </span>
-              </div>
-
-              {/* Instant Test Mode Button */}
-              <button
-                type="button"
-                onClick={signInWithDemo}
-                className="w-full py-3 px-4 rounded-xl text-sm font-bold text-orange-950 bg-gradient-to-r from-orange-100 via-amber-100 to-orange-100 hover:from-orange-200 hover:to-amber-200 border border-orange-300/80 shadow-sm transition-all flex items-center justify-center space-x-2 group"
-              >
-                <Zap className="w-4 h-4 text-orange-600 fill-orange-500 group-hover:scale-110 transition-transform" />
-                <span>Instant Demo / Test Access (Bypass Email Limit)</span>
-              </button>
 
               {/* Admin Quick Credentials Option */}
               <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between text-xs">

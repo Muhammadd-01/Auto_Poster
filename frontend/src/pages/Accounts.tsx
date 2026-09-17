@@ -2,15 +2,19 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Link as LinkIcon, Trash2, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
 import { format, parseISO } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const Accounts = () => {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accountToDisconnect, setAccountToDisconnect] = useState<string | null>(null);
 
   const successParam = searchParams.get('success');
   const errorParam = searchParams.get('error');
@@ -30,7 +34,7 @@ export const Accounts = () => {
       
       if (data) setAccounts(data);
     } catch (err) {
-      console.warn('Error fetching social accounts:', err);
+      console.warn('Fetch accounts error:', err);
     } finally {
       setLoading(false);
     }
@@ -41,14 +45,18 @@ export const Accounts = () => {
     window.location.href = `${backendUrl}/api/auth/linkedin?userId=${user?.id}`;
   };
 
-  const handleDisconnect = async (accountId: string) => {
-    if (!confirm('Disconnect LinkedIn?\n\nYou will no longer be able to publish to LinkedIn from this account until you reconnect it.')) return;
+  const confirmDisconnect = async () => {
+    if (!accountToDisconnect) return;
+    const accountId = accountToDisconnect;
     
     try {
       await supabase.from('social_accounts').delete().eq('id', accountId);
       setAccounts(accounts.filter(a => a.id !== accountId));
-    } catch (err) {
-      alert('Failed to disconnect account.');
+      toast.success('Account Disconnected', 'Your LinkedIn account integration has been removed.');
+    } catch (err: any) {
+      toast.error('Disconnect Failed', err.message || 'Could not disconnect account.');
+    } finally {
+      setAccountToDisconnect(null);
     }
   };
 
@@ -95,12 +103,7 @@ export const Accounts = () => {
           </div>
         )}
 
-        {isDemoMode && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between text-amber-900 text-xs font-semibold">
-            <span>You are currently in Instant Demo Mode. Live LinkedIn connections require a registered user session.</span>
-          </div>
-        )}
-        
+
         <div className="bg-white rounded-3xl border border-orange-100 shadow-xl shadow-orange-950/5 overflow-hidden">
           
           {/* LinkedIn Section */}
@@ -146,7 +149,7 @@ export const Accounts = () => {
                 </div>
                 
                 <button 
-                  onClick={() => handleDisconnect(linkedInAccount.id)}
+                  onClick={() => setAccountToDisconnect(linkedInAccount.id)}
                   className="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 transition-colors flex items-center space-x-2"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -172,6 +175,15 @@ export const Accounts = () => {
           
         </div>
       </main>
+      
+      <ConfirmModal
+        isOpen={accountToDisconnect !== null}
+        title="Disconnect LinkedIn"
+        message="Are you sure you want to disconnect your LinkedIn account? You will no longer be able to publish to LinkedIn from this account until you reconnect it."
+        confirmText="Yes, Disconnect"
+        onClose={() => setAccountToDisconnect(null)}
+        onConfirm={confirmDisconnect}
+      />
     </motion.div>
   );
 };

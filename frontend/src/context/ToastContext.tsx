@@ -54,6 +54,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{ toasts, showToast, removeToast, success, error, warning, info }}
     >
       {children}
+      <style>{`
+        @keyframes shrink-progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
 
       {/* Floating Custom Notification Alert Stack (Top Right) */}
       <div className="fixed top-5 right-5 z-[9999] flex flex-col space-y-3 pointer-events-none max-w-sm w-full px-4 sm:px-0">
@@ -66,7 +72,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               iconBg: 'bg-gradient-to-tr from-orange-500 to-amber-500 text-white',
               titleColor: 'text-gray-900',
               shadow: 'shadow-2xl shadow-orange-600/15',
-              accentBar: 'bg-gradient-to-b from-orange-500 to-amber-500',
+              accentBar: 'bg-gradient-to-r from-orange-500 to-amber-500',
             },
             error: {
               icon: AlertCircle,
@@ -102,13 +108,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto transform transition-all duration-300 ease-out translate-y-0 opacity-100 flex items-stretch rounded-2xl overflow-hidden border ${config.border} ${config.bg} ${config.shadow}`}
+              className={`pointer-events-auto relative transform transition-all duration-300 ease-out translate-y-0 opacity-100 flex items-stretch rounded-2xl overflow-hidden border ${config.border} ${config.bg} ${config.shadow}`}
               role="alert"
             >
-              {/* Left thematic accent bar */}
-              <div className={`w-1.5 flex-shrink-0 ${config.accentBar}`} />
-
-              <div className="p-4 flex items-start space-x-3.5 flex-1 min-w-0">
+              <div className="p-4 flex items-start space-x-3.5 flex-1 min-w-0 z-10">
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${config.iconBg}`}>
                   <IconComponent className="w-4 h-4" />
                 </div>
@@ -132,6 +135,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
+              
+              {toast.duration && toast.duration > 0 && (
+                <div 
+                  className={`absolute bottom-0 left-0 h-1 ${config.accentBar}`}
+                  style={{ animation: `shrink-progress ${toast.duration}ms linear forwards` }}
+                />
+              )}
             </div>
           );
         })}

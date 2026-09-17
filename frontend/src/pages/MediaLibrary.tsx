@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { 
   Image as ImageIcon, 
   Video, 
@@ -12,19 +14,16 @@ import {
 } from 'lucide-react';
 
 export const MediaLibrary = () => {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
+  const toast = useToast();
   const [mediaList, setMediaList] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; storagePath?: string } | null>(null);
 
   const fetchMedia = async () => {
     if (!user) return;
 
-    if (isDemoMode) {
-      const stored = JSON.parse(localStorage.getItem('autopost_demo_media') || '[]');
-      setMediaList(stored);
-      return;
-    }
 
     try {
       const { data } = await supabase
@@ -33,7 +32,18 @@ export const MediaLibrary = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (data) setMediaList(data);
+      if (data) {
+        const enriched = data.map((item) => {
+          const { data: publicUrlData } = supabase.storage
+            .from('media')
+            .getPublicUrl(item.storage_path);
+          return {
+            ...item,
+            preview_url: publicUrlData.publicUrl,
+          };
+        });
+        setMediaList(enriched);
+      }
     } catch (err) {
       console.warn('Error fetching media:', err);
     }
@@ -41,31 +51,15 @@ export const MediaLibrary = () => {
 
   useEffect(() => {
     fetchMedia();
-  }, [user, isDemoMode]);
+  }, [user]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !user) return;
-    const file = e.target.files[0];
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
     setUploading(true);
 
     try {
-      if (isDemoMode) {
-        const preview = URL.createObjectURL(file);
-        const newMedia = {
-          id: `media_${Date.now()}`,
-          filename: file.name,
-          mime_type: file.type,
-          size: file.size,
-          storage_path: `demo/${file.name}`,
-          preview_url: preview,
-          created_at: new Date().toISOString(),
-        };
-        const stored = JSON.parse(localStorage.getItem('autopost_demo_media') || '[]');
-        const updated = [newMedia, ...stored];
-        localStorage.setItem('autopost_demo_media', JSON.stringify(updated));
-        setMediaList(updated);
-        return;
-      }
 
       const fileExt = file.name.split('.').pop();
       const storagePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -96,24 +90,19 @@ export const MediaLibrary = () => {
 
       if (inserted) {
         setMediaList((prev) => [{ ...inserted, preview_url: publicUrlData.publicUrl }, ...prev]);
+        toast.success('Media Uploaded', `${file.name} uploaded successfully.`);
       }
     } catch (err: any) {
-      alert('Upload failed: ' + err.message);
+      toast.error('Upload Failed', err.message || 'Could not upload media.');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDelete = async (id: string, storagePath?: string) => {
-    if (!confirm('Remove this media asset?')) return;
-
-    if (isDemoMode) {
-      const stored = JSON.parse(localStorage.getItem('autopost_demo_media') || '[]');
-      const updated = stored.filter((m: any) => m.id !== id);
-      localStorage.setItem('autopost_demo_media', JSON.stringify(updated));
-      setMediaList(updated);
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { id, storagePath } = itemToDelete;
+    
 
     try {
       if (storagePath) {
@@ -121,8 +110,11 @@ export const MediaLibrary = () => {
       }
       await supabase.from('media').delete().eq('id', id);
       setMediaList((prev) => prev.filter((m) => m.id !== id));
+      toast.success('Media Deleted', 'Asset removed from library.');
     } catch (err: any) {
-      alert('Failed to delete media: ' + err.message);
+      toast.error('Delete Failed', err.message || 'Could not delete media asset.');
+    } finally {
+      setItemToDelete(null);
     }
   };
 
@@ -152,7 +144,7 @@ export const MediaLibrary = () => {
               type="file"
               accept="image/*,video/*"
               className="hidden"
-              onChange={handleUpload}
+              onChange={handleFileUpload}
               disabled={uploading}
             />
           </label>
@@ -203,7 +195,7 @@ export const MediaLibrary = () => {
                         {copiedId === item.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                       <button
-                        onClick={() => handleDelete(item.id, item.storage_path)}
+                        onClick={() => setItemToDelete({ id: item.id, storagePath: item.storage_path })}
                         title="Delete asset"
                         className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-xs"
                       >
@@ -227,6 +219,15 @@ export const MediaLibrary = () => {
           </div>
         )}
       </main>
+      
+      <ConfirmModal
+        isOpen={itemToDelete !== null}
+        title="Delete Media"
+        message="Are you sure you want to remove this media asset?"
+        confirmText="Yes, Delete"
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };

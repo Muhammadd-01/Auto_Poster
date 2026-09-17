@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { 
   Link as LinkIcon, 
   Plus, 
@@ -12,25 +14,25 @@ import {
   ArrowUpRight, 
   Layers, 
   FileText,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 export const Dashboard = () => {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
+  const toast = useToast();
   const [metrics, setMetrics] = useState({ total: 0, published: 0, scheduled: 0, failed: 0 });
   const [recentPosts, setRecentPosts] = useState<any[]>([]);
   const [linkedInAccount, setLinkedInAccount] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
     if (!user) return;
 
-    if (isDemoMode) {
-      // Demo logic...
-      setLoading(false);
-      return;
-    }
 
     try {
       // 1. Fetch Posts
@@ -72,10 +74,70 @@ export const Dashboard = () => {
     }
   };
 
+  const handleSyncLinkedIn = async () => {
+    if (!user?.id) {
+      toast.warning('Authentication Required', 'Please log in to sync posts with LinkedIn.');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/sync/linkedin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to sync with LinkedIn');
+      }
+      if (data.restricted) {
+        toast.info('Dashboard Refreshed', data.message);
+      } else {
+        toast.success('LinkedIn Synced!', data.message || `Synced ${data.syncedCount} posts.`);
+      }
+      fetchDashboardData();
+    } catch (err: any) {
+      toast.error('Sync Notice', err.message || 'Could not sync historical posts from LinkedIn.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!postToDelete) return;
+    const postId = postToDelete;
+
+    try {
+      try {
+        const res = await fetch('http://localhost:3000/api/posts/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId, userId: user?.id })
+        });
+        const json = await res.json();
+        if (json.deletedFromLinkedIn) {
+          toast.success('Deleted From LinkedIn & Dashboard', 'Post was removed from your live LinkedIn feed and dashboard.');
+        } else {
+          toast.success('Post Deleted', 'Post was removed from your dashboard.');
+        }
+      } catch {
+        await supabase.from('posts').delete().eq('id', postId);
+        toast.info('Post Deleted', 'Removed from database.');
+      }
+      setRecentPosts((prev) => prev.filter((p) => p.id !== postId));
+      fetchDashboardData();
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      toast.error('Delete Failed', err.message || 'Could not delete post.');
+    } finally {
+      setPostToDelete(null);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
 
-    if (!isDemoMode && user) {
+    if (user) {
       const subscription = supabase
         .channel('public:posts')
         .on(
@@ -89,7 +151,7 @@ export const Dashboard = () => {
         supabase.removeChannel(subscription);
       };
     }
-  }, [user, isDemoMode]);
+  }, [user]);
 
   let isOfflineAdmin = false;
   try {
@@ -270,12 +332,23 @@ export const Dashboard = () => {
                   </div>
                 </div>
 
-                <Link
-                  to="/accounts"
-                  className="block text-center w-full py-2 text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
-                >
-                  Manage Connection
-                </Link>
+                <div className="pt-2 flex flex-col space-y-2">
+                  <button
+                    onClick={handleSyncLinkedIn}
+                    disabled={isSyncing}
+                    className="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-orange-500' : ''}`} />
+                    <span>{isSyncing ? 'Syncing...' : 'Refresh & Sync Queue'}</span>
+                  </button>
+
+                  <Link
+                    to="/accounts"
+                    className="block text-center w-full py-2 text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
+                  >
+                    Manage Connection
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="space-y-4 text-center py-4">
@@ -300,13 +373,24 @@ export const Dashboard = () => {
                 <h3 className="text-lg font-bold text-gray-900">Recent Post Queue</h3>
                 <p className="text-xs text-gray-500">Live posts tracked by the publisher engine</p>
               </div>
-              <Link
-                to="/schedule"
-                className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center space-x-1"
-              >
-                <span>View All History</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleSyncLinkedIn}
+                  disabled={isSyncing}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-700 bg-white hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 shadow-xs transition-all disabled:opacity-50"
+                  title="Sync posts from LinkedIn"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-orange-500' : ''}`} />
+                  <span>{isSyncing ? 'Syncing...' : 'Sync'}</span>
+                </button>
+                <Link
+                  to="/schedule"
+                  className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center space-x-1"
+                >
+                  <span>View All History</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
             {loading ? (
@@ -331,10 +415,12 @@ export const Dashboard = () => {
                 {recentPosts.map((post) => (
                   <div key={post.id} className="py-4 flex items-start justify-between gap-4">
                     <div className="space-y-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 line-clamp-2">
-                        {post.caption}
-                      </p>
-                      <div className="flex items-center space-x-3 text-xs text-gray-400">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-2">
+                          {post.caption}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2 text-xs text-gray-400">
                         <span>
                           {post.status === 'PUBLISHED'
                             ? 'Published: ' + format(parseISO(post.published_at || post.created_at), 'MMM d, h:mm a')
@@ -342,12 +428,20 @@ export const Dashboard = () => {
                             ? 'Scheduled for: ' + format(parseISO(post.scheduled_at || post.created_at), 'MMM d, h:mm a')
                             : 'Drafted: ' + format(parseISO(post.created_at), 'MMM d, h:mm a')}
                         </span>
+                        {post.linkedin_post_id && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center text-[10px] font-bold text-[#0077b5] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                              LinkedIn Post
+                            </span>
+                          </>
+                        )}
                         <span>•</span>
                         <span className="font-mono text-[11px]">{post.timezone || 'Asia/Karachi'}</span>
                       </div>
                     </div>
 
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex items-center space-x-2">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
                           post.status === 'PUBLISHED'
@@ -361,6 +455,14 @@ export const Dashboard = () => {
                       >
                         {post.status}
                       </span>
+
+                      <button
+                        onClick={() => setPostToDelete(post.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete post from dashboard & LinkedIn"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -370,6 +472,17 @@ export const Dashboard = () => {
 
         </div>
       </main>
+
+      <ConfirmModal
+        isOpen={!!postToDelete}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? If it has been published to LinkedIn, it will also be deleted from your live LinkedIn profile."
+        confirmText="Delete Post"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDelete}
+        onClose={() => setPostToDelete(null)}
+      />
     </div>
   );
 };

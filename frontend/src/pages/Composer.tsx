@@ -16,7 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export const Composer = () => {
-  const { user, isDemoMode, linkedInAccount } = useAuth();
+  const { user, linkedInAccount } = useAuth();
   const navigate = useNavigate();
 
   const [caption, setCaption] = useState('');
@@ -53,9 +53,6 @@ export const Composer = () => {
 
   const uploadMedia = async (): Promise<string | null> => {
     if (!file || !user) return null;
-    if (isDemoMode) {
-      return `demo-uploads/${file.name}`;
-    }
 
     try {
       const fileExt = file.name.split('.').pop();
@@ -97,24 +94,7 @@ export const Composer = () => {
         scheduled_at = new Date().toISOString();
       }
 
-      if (isDemoMode) {
-        // Save to demo storage in localStorage
-        const stored = JSON.parse(localStorage.getItem('autopost_demo_posts') || '[]');
-        const newPost = {
-          id: `demo_${Date.now()}`,
-          user_id: user?.id,
-          caption,
-          status: action,
-          scheduled_at,
-          published_at: action === 'PROCESSING' ? new Date().toISOString() : null,
-          timezone,
-          created_at: new Date().toISOString(),
-          media_path: mediaPath,
-          preview_url: previewUrl,
-        };
-        localStorage.setItem('autopost_demo_posts', JSON.stringify([newPost, ...stored]));
-      } else {
-        // Insert into Supabase
+      // Insert into Supabase
         const { data: post, error } = await supabase
           .from('posts')
           .insert([
@@ -154,10 +134,7 @@ export const Composer = () => {
               },
             ]);
           }
-        }
-      }
-
-      setSuccess(true);
+        }      setSuccess(true);
       setTimeout(() => {
         navigate('/schedule');
       }, 1200);

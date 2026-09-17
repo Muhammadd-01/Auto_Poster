@@ -23,12 +23,11 @@ cron.schedule('* * * * *', async () => {
   console.log(`[Worker] Checking for scheduled posts at ${new Date().toISOString()}`);
 
   try {
-    // 1. Fetch posts that are SCHEDULED or PROCESSING and the scheduled_at time is in the past
+    // 1. Fetch posts that are PROCESSING, or SCHEDULED and in the past
     const { data: posts, error } = await supabase
       .from('posts')
       .select('*, post_media(media(*))')
-      .in('status', ['SCHEDULED', 'PROCESSING'])
-      .lte('scheduled_at', new Date().toISOString());
+      .or(`status.eq.PROCESSING,and(status.eq.SCHEDULED,scheduled_at.lte.${new Date().toISOString()})`);
 
     if (error) {
       console.error('[Worker] Error fetching posts:', error);
@@ -53,18 +52,27 @@ cron.schedule('* * * * *', async () => {
 
       try {
         let linkedinPostId = '';
-        let accessToken = 'mock_token';
+        let accessToken = '';
+        let authorId = '';
         
         // Fetch real token
         const { data: accounts } = await supabase
           .from('social_accounts')
-          .select('access_token')
+          .select('access_token, provider_account_id')
           .eq('user_id', post.user_id)
           .eq('provider', 'linkedin')
           .single();
           
-        if (accounts && accounts.access_token) {
+        if (accounts && accounts.access_token && accounts.provider_account_id) {
           accessToken = accounts.access_token;
+          authorId = accounts.provider_account_id;
+        } else {
+          console.warn(`[Worker] Post ${post.id}: No connected LinkedIn account found for user ${post.user_id}.`);
+          await supabase
+            .from('posts')
+            .update({ status: 'FAILED', failure_reason: 'No connected LinkedIn account found.' })
+            .eq('id', post.id);
+          continue;
         }
         
         // Handle media
@@ -80,12 +88,12 @@ cron.schedule('* * * * *', async () => {
           const mediaUrl = publicUrlData.publicUrl;
 
           if (firstMedia.mime_type.startsWith('image/')) {
-            linkedinPostId = await LinkedInService.publishImagePost(accessToken, post.caption, mediaUrl);
+            linkedinPostId = await LinkedInService.publishImagePost(accessToken, authorId, post.caption, mediaUrl);
           } else if (firstMedia.mime_type.startsWith('video/')) {
-            linkedinPostId = await LinkedInService.publishVideoPost(accessToken, post.caption, mediaUrl);
+            linkedinPostId = await LinkedInService.publishVideoPost(accessToken, authorId, post.caption, mediaUrl);
           }
         } else {
-          linkedinPostId = await LinkedInService.publishTextPost(accessToken, post.caption);
+          linkedinPostId = await LinkedInService.publishTextPost(accessToken, authorId, post.caption);
         }
 
         // 3. Mark as PUBLISHED
@@ -138,7 +146,7 @@ cron.schedule('* * * * *', async () => {
 interface ActivityLog {
   id: string;
   timestamp: string;
-  type: 'VISITOR' | 'AUTH_SIGNIN' | 'AUTH_SIGNUP' | 'LINKEDIN_CONNECT' | 'POST_SCHEDULE' | 'POST_PUBLISHED' | 'SYSTEM';
+  type: 'VISITOR' | 'AUTH_SIGNIN' | 'AUTH_SIGNUP' | 'LINKEDIN_CONNECT' | 'POST_SCHEDULE' | 'POST_PUBLISHED' | 'SYSTEM' | 'POST_DELETE' | 'LINKEDIN_SYNC';
   userEmail?: string;
   userName?: string;
   details: string;
@@ -146,31 +154,7 @@ interface ActivityLog {
   ip?: string;
 }
 
-const auditLogs: ActivityLog[] = [
-  {
-    id: 'log-seed-1',
-    timestamp: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
-    type: 'SYSTEM',
-    details: 'Background worker daemon initialized and polling scheduled posts.',
-    status: 'info'
-  },
-  {
-    id: 'log-seed-2',
-    timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-    type: 'AUTH_SIGNIN',
-    userEmail: 'creator@autopost.io',
-    userName: 'Active Creator',
-    details: 'User authenticated via Supabase session.',
-    status: 'success'
-  },
-  {
-    id: 'log-seed-3',
-    timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    type: 'VISITOR',
-    details: 'Visitor explored /features marketing page.',
-    status: 'info'
-  }
-];
+const auditLogs: ActivityLog[] = [];
 
 function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>) {
   const newLog: ActivityLog = {
@@ -282,15 +266,15 @@ app.get('/api/admin/overview', async (req, res) => {
       if (p.user_id) {
         const existing = userMap.get(p.user_id) || {
           id: p.user_id,
-          email: `user-${p.user_id.slice(0, 8)}@autopost.io`,
-          name: `User ${p.user_id.slice(0, 6)}`,
+          email: 'Active User',
+          name: 'Creator',
           avatar: null,
           linkedinConnected: false,
           linkedinProfile: null,
           postsCount: 0,
           firstSeen: p.created_at,
           lastActive: p.scheduled_at || p.created_at,
-          plan: 'Starter'
+          plan: 'Standard'
         };
         existing.postsCount = (existing.postsCount || 0) + 1;
         userMap.set(p.user_id, existing);
@@ -305,7 +289,7 @@ app.get('/api/admin/overview', async (req, res) => {
     res.json({
       success: true,
       stats: {
-        totalUsers: Math.max(usersList.length, 1),
+        totalUsers: usersList.length,
         connectedAccounts: (socialAccounts || []).length,
         totalPosts: (posts || []).length,
         postsScheduled: totalScheduled,
@@ -477,6 +461,174 @@ app.get('/api/auth/linkedin/callback', async (req, res) => {
   } catch (err: any) {
     console.error('[Auth] Callback processing error:', err.message || err);
     res.redirect(`${FRONTEND_URL}/accounts?error=callback_failed&details=${encodeURIComponent(err.message || 'Unknown error')}`);
+  }
+});
+
+/**
+ * Delete a post from Supabase and LinkedIn
+ */
+app.post('/api/posts/delete', async (req, res) => {
+  const { postId, userId } = req.body;
+  if (!postId) return res.status(400).json({ error: 'Missing postId' });
+
+  try {
+    console.log(`[Delete] Deleting post ${postId} requested by user ${userId || 'anonymous'}...`);
+
+    // 1. Fetch post to get linkedin_post_id and user_id
+    const { data: post, error: postErr } = await supabase
+      .from('posts')
+      .select('id, user_id, linkedin_post_id, caption')
+      .eq('id', postId)
+      .maybeSingle();
+
+    if (postErr) throw postErr;
+
+    let deletedFromLinkedIn = false;
+
+    // 2. If post has a linkedin_post_id, attempt to delete from LinkedIn directly
+    if (post && post.linkedin_post_id) {
+      const targetUserId = userId || post.user_id;
+      const { data: account } = await supabase
+        .from('social_accounts')
+        .select('access_token')
+        .eq('user_id', targetUserId)
+        .eq('provider', 'linkedin')
+        .maybeSingle();
+
+      if (account && account.access_token) {
+        deletedFromLinkedIn = await LinkedInService.deletePost(account.access_token, post.linkedin_post_id);
+      }
+    }
+
+    // 3. Delete from Supabase
+    await supabase.from('post_media').delete().eq('post_id', postId);
+    const { error: dbDeleteErr } = await supabase.from('posts').delete().eq('id', postId);
+
+    if (dbDeleteErr) throw dbDeleteErr;
+
+    logActivity({
+      type: 'POST_DELETE',
+      userEmail: userId || 'user',
+      details: `Deleted post ${postId}${deletedFromLinkedIn ? ' (also removed from live LinkedIn)' : ''}`,
+      status: 'info'
+    });
+
+    res.json({
+      success: true,
+      deletedFromLinkedIn,
+      message: deletedFromLinkedIn
+        ? 'Post deleted from database and from LinkedIn.'
+        : 'Post deleted from database.'
+    });
+  } catch (err: any) {
+    console.error('[Delete Error]:', err);
+    res.status(500).json({ success: false, error: err.message || 'Failed to delete post' });
+  }
+});
+
+/**
+ * Sync past posts from LinkedIn to Supabase
+ */
+app.post('/api/sync/linkedin', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+  try {
+    console.log(`[Sync] Syncing past LinkedIn posts for user ${userId}...`);
+
+    // 1. Get user's LinkedIn account credentials
+    const { data: account, error: accErr } = await supabase
+      .from('social_accounts')
+      .select('access_token, provider_account_id, display_name, email')
+      .eq('user_id', userId)
+      .eq('provider', 'linkedin')
+      .maybeSingle();
+
+    if (accErr || !account) {
+      return res.status(404).json({ success: false, error: 'LinkedIn account not found or not connected.' });
+    }
+
+    if (!account.access_token || !account.provider_account_id) {
+      return res.status(400).json({ success: false, error: 'Incomplete LinkedIn credentials.' });
+    }
+
+    // 2. Fetch posts from LinkedIn API
+    const result = await LinkedInService.fetchAuthorPosts(account.access_token, account.provider_account_id);
+
+    let syncedCount = 0;
+
+    if (!result.error && result.elements.length > 0) {
+      for (const el of result.elements) {
+        const shareContent = el.specificContent?.['com.linkedin.ugc.ShareContent'];
+        const text = shareContent?.shareCommentary?.text || '';
+        const publishedAt = new Date(el.firstPublishedAt || el.created?.time || Date.now()).toISOString();
+        const linkedinPostId = el.id;
+
+        // Upsert post to Supabase
+        const { data: existing } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('linkedin_post_id', linkedinPostId)
+          .maybeSingle();
+
+        if (!existing) {
+          await supabase.from('posts').insert([
+            {
+              user_id: userId,
+              caption: text || 'LinkedIn Update',
+              status: 'PUBLISHED',
+              published_at: publishedAt,
+              scheduled_at: publishedAt,
+              linkedin_post_id: linkedinPostId,
+              timezone: 'UTC'
+            }
+          ]);
+          syncedCount++;
+        }
+      }
+    }
+
+    // 3. Count current posts in Supabase for user
+    const { data: userPosts } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('user_id', userId);
+
+    const totalInDashboard = userPosts?.length || 0;
+
+    logActivity({
+      type: 'LINKEDIN_SYNC',
+      userEmail: account.email || userId,
+      userName: account.display_name,
+      details: result.error 
+        ? `Dashboard synced (${totalInDashboard} active posts). External read restricted by LinkedIn permissions.`
+        : `Synced ${syncedCount} new posts from LinkedIn into dashboard.`,
+      status: 'info'
+    });
+
+    if (result.error) {
+      return res.json({
+        success: true,
+        restricted: true,
+        syncedCount: 0,
+        totalInDashboard,
+        message: `Dashboard refreshed! All posts authored through Auto_Poster are synchronized. (Note: Reading past posts created outside this app requires LinkedIn's Community Management API).`
+      });
+    }
+
+    res.json({
+      success: true,
+      restricted: false,
+      syncedCount,
+      totalInDashboard,
+      message: `Successfully synced ${syncedCount} past posts from LinkedIn!`
+    });
+  } catch (err: any) {
+    console.error('[Sync Error]:', err);
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to sync posts from LinkedIn.'
+    });
   }
 });
 

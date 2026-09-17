@@ -72,6 +72,15 @@ export const AdminDashboard = () => {
     ['users', 'posts', 'activity', 'system', 'personal'].includes(initialTab) ? initialTab : 'users'
   );
 
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as any;
+    if (tabParam && ['users', 'posts', 'activity', 'system', 'personal'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    } else if (!tabParam) {
+      setActiveTab('users');
+    }
+  }, [searchParams]);
+
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,162 +139,23 @@ export const AdminDashboard = () => {
   };
 
   const [stats, setStats] = useState<AdminStats>({
-    totalUsers: 8,
-    connectedAccounts: 3,
-    totalPosts: 12,
-    postsScheduled: 4,
-    postsPublished: 7,
-    postsFailed: 1,
+    totalUsers: 0,
+    connectedAccounts: 0,
+    totalPosts: 0,
+    postsScheduled: 0,
+    postsPublished: 0,
+    postsFailed: 0,
     workerStatus: {
       running: true,
-      uptimeSeconds: 3600,
+      uptimeSeconds: 0,
       lastRun: new Date().toISOString(),
       interval: 'Every 60 seconds',
     },
   });
 
-  const [users, setUsers] = useState<PlatformUser[]>([
-    {
-      id: '00000000-0000-0000-0000-000000000001',
-      email: 'creator@autopost.io',
-      name: 'Muhammad Affan',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-      linkedinConnected: true,
-      linkedinProfile: 'Muhammad Affan (LinkedIn)',
-      postsCount: 6,
-      firstSeen: new Date(Date.now() - 86400000 * 3).toISOString(),
-      lastActive: new Date().toISOString(),
-      plan: 'Pro Growth',
-    },
-    {
-      id: '51e7fa6a-f101-4bcf-8397-8de7a2f3f835',
-      email: 'admin@autopost.io',
-      name: 'Platform Owner (Superadmin)',
-      avatar: null,
-      linkedinConnected: true,
-      linkedinProfile: 'M. Affan',
-      postsCount: 8,
-      firstSeen: new Date(Date.now() - 86400000 * 5).toISOString(),
-      lastActive: new Date().toISOString(),
-      plan: 'Agency Studio (Superadmin)',
-    },
-    {
-      id: 'user-02',
-      email: 'sarah.founder@techseed.co',
-      name: 'Sarah Chen',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-      linkedinConnected: true,
-      linkedinProfile: 'Sarah Chen | Founder & CEO',
-      postsCount: 4,
-      firstSeen: new Date(Date.now() - 86400000 * 2).toISOString(),
-      lastActive: new Date(Date.now() - 3600000 * 2).toISOString(),
-      plan: 'Pro Growth',
-    },
-    {
-      id: 'user-03',
-      email: 'alex.growth@vanguard.io',
-      name: 'Alex Rivera',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
-      linkedinConnected: false,
-      linkedinProfile: null,
-      postsCount: 2,
-      firstSeen: new Date(Date.now() - 86400000).toISOString(),
-      lastActive: new Date(Date.now() - 3600000 * 5).toISOString(),
-      plan: 'Starter',
-    },
-    {
-      id: 'user-04',
-      email: 'marcus.consulting@advisory.com',
-      name: 'Marcus Vance',
-      avatar: null,
-      linkedinConnected: true,
-      linkedinProfile: 'Marcus Vance, Partner',
-      postsCount: 5,
-      firstSeen: new Date(Date.now() - 86400000 * 4).toISOString(),
-      lastActive: new Date(Date.now() - 3600000 * 12).toISOString(),
-      plan: 'Agency Studio',
-    },
-  ]);
-
-  const [posts, setPosts] = useState<PostItem[]>([
-    {
-      id: 'post-1',
-      user_id: '00000000-0000-0000-0000-000000000001',
-      caption: '🚀 Excited to announce our autonomous LinkedIn publishing infrastructure is officially live!',
-      status: 'PUBLISHED',
-      scheduled_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-      published_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      id: 'post-2',
-      user_id: '51e7fa6a-f101-4bcf-8397-8de7a2f3f835',
-      caption: '3 reasons why founders fail at content consistency (and the simple playbook to fix it)',
-      status: 'SCHEDULED',
-      scheduled_at: new Date(Date.now() + 3600000 * 2).toISOString(),
-      created_at: new Date(Date.now() - 7200000).toISOString(),
-    },
-    {
-      id: 'post-3',
-      user_id: 'user-02',
-      caption: 'Scaling B2B outbound is broken. Here is how organic LinkedIn presence drove $450k in pipeline.',
-      status: 'SCHEDULED',
-      scheduled_at: new Date(Date.now() + 3600000 * 14).toISOString(),
-      created_at: new Date(Date.now() - 3600000 * 3).toISOString(),
-    },
-    {
-      id: 'post-4',
-      user_id: 'user-04',
-      caption: 'The AI revolution in marketing workflow orchestration.',
-      status: 'PUBLISHED',
-      scheduled_at: new Date(Date.now() - 86400000).toISOString(),
-      published_at: new Date(Date.now() - 86400000).toISOString(),
-      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    },
-  ]);
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: 'log-1',
-      timestamp: new Date().toISOString(),
-      type: 'SYSTEM',
-      details: 'Superadmin accessed the unified platform administration suite.',
-      status: 'info',
-    },
-    {
-      id: 'log-2',
-      timestamp: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
-      type: 'LINKEDIN_CONNECT',
-      userEmail: 'admin@autopost.io',
-      userName: 'Muhammad Affan',
-      details: 'OAuth 2.0 token successfully exchanged and verified with LinkedIn OpenID profile.',
-      status: 'success',
-    },
-    {
-      id: 'log-3',
-      timestamp: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-      type: 'POST_SCHEDULE',
-      userEmail: 'admin@autopost.io',
-      details: 'Post scheduled for delivery with cloud media asset attached.',
-      status: 'success',
-    },
-    {
-      id: 'log-4',
-      timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-      type: 'VISITOR',
-      details: 'Visitor explored /pricing and toggled Annual billing option.',
-      status: 'info',
-    },
-    {
-      id: 'log-5',
-      timestamp: new Date(Date.now() - 1000 * 60 * 52).toISOString(),
-      type: 'AUTH_SIGNIN',
-      userEmail: 'sarah.founder@techseed.co',
-      userName: 'Sarah Chen',
-      details: 'User authenticated via Supabase session.',
-      status: 'success',
-    },
-  ]);
+  const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   const fetchOverview = async () => {
     try {

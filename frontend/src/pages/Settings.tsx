@@ -9,18 +9,19 @@ import {
 
 export const Settings = () => {
   return (
-    <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+    <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8 pb-16">
       <div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center space-x-3">
           <SettingsIcon className="w-8 h-8 text-gray-400" />
           <span>Platform Settings</span>
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          Configure your social accounts, API keys, and notification preferences.
+          Manage your API configurations and integrations.
         </p>
       </div>
 
-      <div className="bg-white rounded-3xl p-8 border border-orange-100 shadow-xl shadow-orange-950/5 space-y-8">
+      {/* --- LinkedIn Developer Setup Section --- */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-orange-100 shadow-xl shadow-orange-950/5 space-y-8">
         
         <div className="flex items-center justify-between border-b border-gray-100 pb-5">
           <div className="flex items-center space-x-3">
@@ -32,7 +33,7 @@ export const Settings = () => {
               <p className="text-xs text-gray-500">Connect your platform to LinkedIn's Official API</p>
             </div>
           </div>
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full uppercase tracking-widest border border-amber-200">
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full uppercase tracking-widest border border-amber-200 hidden sm:inline-block">
             Manual Configuration
           </span>
         </div>
