@@ -7,20 +7,12 @@ import {
   BookOpen, 
   Zap, 
   Sparkles, 
-  Clock, 
   FileSpreadsheet, 
-  Share2, 
-  Repeat2, 
   ShieldCheck, 
   ChevronDown, 
   ChevronUp, 
-  ArrowRight, 
-  CheckCircle2, 
   MessageSquare, 
   Send, 
-  AlertCircle,
-  Link as LinkIcon,
-  Layers,
   Award
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
