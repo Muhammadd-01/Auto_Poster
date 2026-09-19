@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { BulkImportModal } from '../components/BulkImportModal';
+import { EvergreenRecycleModal } from '../components/EvergreenRecycleModal';
+import { ClientReviewModal } from '../components/ClientReviewModal';
 import { 
   Clock, 
   CheckCircle2, 
@@ -14,17 +17,23 @@ import {
   Plus, 
   Calendar as CalendarIcon,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  Repeat2,
+  Share2
 } from 'lucide-react';
 
 export const Calendar = () => {
-  const { user } = useAuth();
+  const { user, linkedInAccount } = useAuth();
   const toast = useToast();
   const [posts, setPosts] = useState<any[]>([]);
   const [filter, setFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [postToRecycle, setPostToRecycle] = useState<any | null>(null);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   const fetchPosts = async () => {
@@ -135,11 +144,27 @@ export const Calendar = () => {
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
+            <button
+              onClick={() => setIsReviewModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs text-gray-700 bg-white hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 shadow-xs transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5 text-orange-600" />
+              <span>Client Review</span>
+            </button>
+
+            <button
+              onClick={() => setIsBulkModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 shadow-xs transition-all"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-orange-600" />
+              <span>Bulk Import (CSV)</span>
+            </button>
+
             <button
               onClick={handleSyncLinkedIn}
               disabled={isSyncing}
-              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold text-xs text-gray-700 bg-white hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 shadow-sm transition-all disabled:opacity-50"
+              className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-xl font-bold text-xs text-gray-700 bg-white hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 shadow-xs transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-orange-500' : ''}`} />
               <span>{isSyncing ? 'Syncing...' : 'Sync LinkedIn'}</span>
@@ -266,6 +291,13 @@ export const Calendar = () => {
                       {post.caption}
                     </p>
 
+                    {post.first_comment && (
+                      <div className="mt-2 text-xs text-orange-800 bg-orange-50/90 px-3 py-1.5 rounded-xl border border-orange-200/70 inline-flex items-center space-x-1.5 max-w-full">
+                        <span className="font-bold flex-shrink-0">💬 1st Comment:</span>
+                        <span className="truncate">{post.first_comment}</span>
+                      </div>
+                    )}
+
                     {post.preview_url && (
                       <div className="mt-2 inline-block rounded-xl overflow-hidden border border-gray-200 max-w-xs">
                         <img src={post.preview_url} alt="Attached Media" className="max-h-36 object-cover" />
@@ -274,6 +306,18 @@ export const Calendar = () => {
                   </div>
 
                   <div className="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
+                    {post.status === 'PUBLISHED' && (
+                      <button
+                        type="button"
+                        onClick={() => setPostToRecycle(post)}
+                        title="Recycle Evergreen Post (+90 days)"
+                        className="px-2.5 py-1.5 text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/80 rounded-xl transition-all flex items-center space-x-1"
+                      >
+                        <Repeat2 className="w-3.5 h-3.5 text-orange-600" />
+                        <span>Recycle</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => setPostToDelete(post.id)}
                       title="Delete / Cancel Post"
@@ -297,6 +341,28 @@ export const Calendar = () => {
         confirmText="Yes, Cancel Post"
         onClose={() => setPostToDelete(null)}
         onConfirm={confirmDelete}
+      />
+
+      <BulkImportModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={fetchPosts}
+        userId={user?.id || ''}
+      />
+
+      <EvergreenRecycleModal
+        isOpen={postToRecycle !== null}
+        onClose={() => setPostToRecycle(null)}
+        onSuccess={fetchPosts}
+        post={postToRecycle}
+        userId={user?.id || ''}
+      />
+
+      <ClientReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        posts={posts}
+        creatorName={linkedInAccount?.display_name || user?.user_metadata?.full_name || 'Creator'}
       />
     </div>
   );

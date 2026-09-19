@@ -108,6 +108,16 @@ cron.schedule('* * * * *', async () => {
 
         console.log(`[Worker] Post ${post.id} published successfully!`);
 
+        // 3.1. If post has automated first comment, post it to LinkedIn
+        if (post.first_comment && post.first_comment.trim() && linkedinPostId) {
+          try {
+            console.log(`[Worker] Publishing automated first comment for post ${post.id}...`);
+            await LinkedInService.publishComment(accessToken, authorId, linkedinPostId, post.first_comment.trim());
+          } catch (commentErr) {
+            console.warn(`[Worker] Note: Could not publish first comment (may require elevated permissions):`, commentErr);
+          }
+        }
+
       } catch (err: any) {
         console.error(`[Worker] Failed to publish post ${post.id}`, err);
         

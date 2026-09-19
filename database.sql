@@ -23,3 +23,7 @@ CREATE TABLE IF NOT EXISTS public.social_accounts (
 -- 2. Setup RLS (Row Level Security)
 -- Note: Disabling RLS allows the backend server (which uses the anon key) to manage social_accounts.
 ALTER TABLE public.social_accounts DISABLE ROW LEVEL SECURITY;
+
+-- 3. Creator Suite Post Columns Migration (Safe to run multiple times)
+ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS first_comment TEXT;
+ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';

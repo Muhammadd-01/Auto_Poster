@@ -45,6 +45,8 @@ CREATE TABLE posts (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   caption TEXT NOT NULL,
+  first_comment TEXT,
+  tags TEXT[] DEFAULT '{}',
   status TEXT DEFAULT 'DRAFT', -- DRAFT, SCHEDULED, PROCESSING, PUBLISHED, FAILED, CANCELLED
   scheduled_at TIMESTAMPTZ,
   published_at TIMESTAMPTZ,

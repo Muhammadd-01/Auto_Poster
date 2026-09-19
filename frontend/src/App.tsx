@@ -21,6 +21,7 @@ import { PricingPage } from './pages/marketing/PricingPage';
 import { AboutPage } from './pages/marketing/AboutPage';
 import { ContactPage } from './pages/marketing/ContactPage';
 import { GoToTop } from './components/GoToTop';
+import { ScrollToTop } from './components/ScrollToTop';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -92,6 +93,7 @@ function App() {
     <AuthProvider>
       <ToastProvider>
         <Router>
+          <ScrollToTop />
           <GoToTop />
           <Routes>
             {/* Public Marketing Multi-Page Routes */}

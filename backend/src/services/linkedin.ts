@@ -272,4 +272,41 @@ export class LinkedInService {
       };
     }
   }
+
+  /**
+   * Publishes an automated first comment on a LinkedIn post
+   */
+  static async publishComment(accessToken: string, authorId: string, postUrn: string, commentText: string): Promise<boolean> {
+    console.log(`[LinkedIn Real] Publishing automated first comment on post ${postUrn}`);
+    try {
+      const encodedUrn = encodeURIComponent(postUrn);
+      const response = await fetch(`https://api.linkedin.com/v2/socialActions/${encodedUrn}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0'
+        },
+        body: JSON.stringify({
+          actor: `urn:li:person:${authorId}`,
+          message: {
+            text: commentText
+          }
+        })
+      });
+
+      if (response.ok || response.status === 201) {
+        console.log(`[LinkedIn Real] Successfully published automated first comment on ${postUrn}`);
+        return true;
+      }
+
+      const resData = await response.json().catch(() => ({}));
+      console.warn(`[LinkedIn Real] Comment response status ${response.status}:`, resData);
+      return false;
+    } catch (err: any) {
+      console.error(`[LinkedIn Real] Error publishing automated comment:`, err.message || err);
+      return false;
+    }
+  }
 }
+
